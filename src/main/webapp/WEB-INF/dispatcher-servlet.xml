@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+    <bean id="viewResolver"
+          class="org.springframework.web.servlet.view.InternalResourceViewResolver"
+          p:prefix="/" p:suffix=".html"/>
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="com.mysql.cj.jdbc.Driver"></property>
+        <property name="url" value="jdbc:mysql://localhost:3306/crm"></property>
+        <property name="username" value="root"></property>
+        <property name="password" value="root"></property>
+    </bean>
+
+    <bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+        <property name="host" value="dsrelay.hoffman.ds.adp.com" />
+        <!--<property name="host" value="smtp.gmail.com" />
+        <property name="port" value="587" />
+        <property name="username" value="mailme.pooja04@gmail.com" />
+        <property name="password" value="th@nkYou0612" />
+-->
+        <property name="javaMailProperties">
+            <props>
+                <prop key="mail.transport.protocol">smtp</prop>
+                <prop key="mail.smtp.auth">false</prop>
+                <!--<prop key="mail.smtp.starttls.enable">true</prop>-->
+                <prop key="mail.from.email">lead.cdkcrm@gmail.com</prop>
+                <!--<prop key="mail.from.email">mailme.pooja04@gmail.com</prop>-->
+            </props>
+        </property>
+    </bean>
+
+    <bean id="checkMailService" class="com.cdk.crm.service.CheckMailService">
+        <constructor-arg index="0" value="pop.gmail.com"/>
+        <constructor-arg index="1" value="pop3"/>
+        <!--<constructor-arg index="2" value="mailme.pooja04@gmail.com"/>
+        <constructor-arg index="3" value="th@nkYou0612"/>
+        -->
+        <constructor-arg index="2" value="lead.cdkcrm@gmail.com"/>
+        <constructor-arg index="3" value="crmCDK@123"/>
+    </bean>
+    <bean class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">
+        <property name="exceptionMappings">
+            <props>
+                <prop key="java.lang.Exception">Error</prop>
+            </props>
+        </property>
+    </bean>
+    <bean id="mailService" class="com.cdk.crm.service.MailService">
+        <property name="mailSender" ref="mailSender"></property>
+    </bean>
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"></property>
+        <property name="annotatedClasses">
+            <list>
+                <value>com.cdk.crm.domain.User</value>
+                <value>com.cdk.crm.domain.Lead</value>
+                <value>com.cdk.crm.domain.SearchInfo</value>
+                <value>com.cdk.crm.domain.FollowUp</value>
+                <!--<value>com.cdk.crm.domain.Referral</value>-->
+            </list>
+        </property>
+
+        <property name="hibernateProperties">
+            <props>
+                <prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+                <prop key="hibernate.show_sql">true</prop>
+                <prop key="hibernate.hbm2dd1.auto">update</prop>
+                <prop key="hibernate.hbm2ddl.auto">create</prop>
+            </props>
+
+        </property>
+
+    </bean>
+    <bean id="hibernateTemplate" class="org.springframework.orm.hibernate3.HibernateTemplate">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+    <bean id="userDAO" class="com.cdk.crm.dao.UserDAO">
+        <property name="hibernateTemplate" ref="hibernateTemplate"></property>
+    </bean>
+    <bean id="leadDAO" class="com.cdk.crm.dao.LeadDAO">
+        <property name="hibernateTemplate" ref="hibernateTemplate"></property>
+    </bean>
+    <bean id="searchInfoDAO" class="com.cdk.crm.dao.SearchInfoDAO">
+        <property name="hibernateTemplate" ref="hibernateTemplate"></property>
+    </bean>
+    <bean id="responseDAO" class="com.cdk.crm.dao.ResponseDAO">
+        <property name="hibernateTemplate" ref="hibernateTemplate"></property>
+    </bean>
+    <bean id="followUpDAO" class="com.cdk.crm.dao.FollowUpDAO">
+        <property name="hibernateTemplate" ref="hibernateTemplate"></property>
+    </bean>
+    <mvc:annotation-driven/>
+    <context:component-scan base-package="com.cdk.crm.Controller"/>
+
+</beans>

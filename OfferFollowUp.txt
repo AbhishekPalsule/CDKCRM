@@ -1,0 +1,6 @@
+Hello,
+    Thank you for choosing us. We hope you had a positive experience. As a token of our gratitude,
+    you can avail the following offer:
+        <offer>
+    Regards,
+    CDKGlobal.

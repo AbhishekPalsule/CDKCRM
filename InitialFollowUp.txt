@@ -1,0 +1,6 @@
+Dear <name>
+    Thank you for contacting us. We have received your query for <make> <model> from <website>.
+    Contact us if you are interested in buying and need further assistance. We will guide you through
+    the entire process.Your query id is <leadId>.Please mention this in all future conversations.
+Regards,
+CDK Global
