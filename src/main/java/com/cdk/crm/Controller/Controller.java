@@ -29,10 +29,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-
-
-import static com.cdk.crm.util.MiscUtil.*;
-
 /**
  * Created by palsulea on 9/4/2016.
  */
@@ -108,11 +104,31 @@ public class Controller {
         this.mailService = mailService;
     }
 
+    public  String getFileName(HttpServletRequest request) {
+        DiskFileItemFactory diskFileItemFactory = new DiskFileItemFactory();
+        ServletFileUpload servletFileUpload = new ServletFileUpload(diskFileItemFactory);
+        String fileName = null;
+        File file = null;
+        try {
+            List<FileItem> list = servletFileUpload.parseRequest(request);
+            for (FileItem f: list){
+                file = new File(f.getName());
+                f.write(file);
+            }
+            System.out.println(file.getAbsolutePath());
+            fileName = file.getAbsolutePath();
+        } catch (FileUploadException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return fileName;
+    }
+
     @RequestMapping(value = "/insertDataInDB", method = RequestMethod.POST)
     public ModelAndView insertData(HttpServletRequest request, final HttpServletResponse response){
         final  long DELAY = 1000l;
         final  long INTERVAL= 1000l;
-
         String fileName = getFileName(request);
         System.out.println("Fetching uploaded csv");
         String delimiter = ",";
@@ -121,8 +137,11 @@ public class Controller {
         for (String line : lines) {
             String[] splitLine = line.split(delimiter);
             SearchInfo searchInfo = getSearchInfo(splitLine);
+            searchInfoDAO.add(searchInfo);
             Lead lead = getLead(splitLine[3], searchInfo);
+            leadDAO.add(lead);
             User user = getUser(splitLine, lead);
+            userDAO.add(user);
         }
         System.out.println("Sending for conversion");
         String jsonString = JSONUtil.getJSONConvertedData(responseDAO.getAllDetailsOfLeadsByDate());
@@ -149,21 +168,20 @@ public class Controller {
         String statuses ="";
         try {
             String data[] = userInfo.split(" ");
-            System.out.println("data:"+data.length);
+
             for(String eachData: data) {
                 String[] info = eachData.split(",");
-                System.out.println("info:"+info.length);
                 Long leadId = Long.parseLong(info[0]);
                 String status = info[1];
                 int count = Integer.parseInt(info[2]);
                 String address = info[3];
 
                 if (status.trim().equalsIgnoreCase("Yes")) {
-                    System.out.println(status);
-                    System.out.println(count);
+                    System.out.println("STATUS:"+status);
                     statuses += sendForPositiveResponse(leadId, count, address) + ",";
                 }
                 if (status.trim().equalsIgnoreCase("No")) {
+                    System.out.println("STATUS:"+status);
                     statuses += sendForNegativeResponse(leadId, count, address) + ",";
                 }
             }
@@ -172,7 +190,6 @@ public class Controller {
         }
 
         return statuses;
-        //return new ModelAndView("redirect:updateMailResponses","mailResponses",statuses);
     }
     public void cleanDatabase(int leadId){
             followUpDAO.delete(leadId);
@@ -187,14 +204,13 @@ public class Controller {
 
     private boolean sendThankYouMsg(Long leadId,String address) {
         NegativeFollowUp followUp = new NegativeFollowUp();
-
         boolean b = mailService.sendMail(address, followUp.getSubject(), followUp.getMailMessage());
         return b;
     }
 
     private String sendForPositiveResponse(Long leadId, int count,String address) {
         if(count==1){
-            System.out.println("reqAck");
+
             if (sendReqAckMsg(address)) return "" + leadId;
         }
         return "";
@@ -229,7 +245,7 @@ public class Controller {
 
     private boolean sendOfferMsg(String address) {
         OfferFollowUp followUp = new OfferFollowUp();
-
+        System.out.println("send Offer Mail to "+ address);
         boolean b = mailService.sendMail(address, followUp.getSubject(), followUp.getMailMessage());
         return b;
 
@@ -238,8 +254,8 @@ public class Controller {
     private boolean sendReqAckMsg(String address) {
         boolean b =false;
         try {
+            System.out.println("send Request Ack Mail to "+ address);
             PositiveFollowUp followUp = new PositiveFollowUp();
-
             b = mailService.sendMail(address, followUp.getSubject(), followUp.getMailMessage("Pooja", "her", "1234567"));
         }catch(Exception e){
             e.printStackTrace();
@@ -248,40 +264,39 @@ public class Controller {
     }
     public String fetchUpdatedFollowUp() {
         List<Object> followUps = followUpDAO.getAllLead();
+        System.out.println("Fetch from followUp_t");
         String userInfo="";
         userInfo += getUserInfo(followUps);
         System.out.println("sending for reply");
-        //return new ModelAndView("redirect:reply.do","json",userInfo);
-        System.out.println(userInfo);
         return userInfo;
     }
 
     public List<String> readMail(){
         List<String> responses =null;
         try {
-            System.out.println("checking ");
+            System.out.println("checking");
             responses = checkMailService.checkMail();
-            //System.out.println(responses);
             System.out.println("updatingMailResponses");
             checkMailService.closeResources();
         }catch (Exception e){
             e.printStackTrace();
         }
         return responses;
-        //return new ModelAndView("redirect:updateMailResponses.do","mailResponses",data);
     }
     public void updateMailResponses(List<String> responses){
+        System.out.println("Updating Responses");
         for (String lead : responses) {
                 String leadInfo[] = lead.split(",");
                 FollowUp followUp = followUpDAO.get(Integer.parseInt(leadInfo[0]));
                 followUp.setCurrentResponse(leadInfo[1].trim());
                 followUpDAO.update(followUp);
             }
+        System.out.println("Updated");
     }
     public void followUpUpdate(String ids){
         System.out.println("initiating follow up");
         String idArray[] = ids.split(",");
-        System.out.println(ids);
+        //System.out.println(ids);
         for (String id: idArray){
            if(!id.equals("")){
             FollowUp followUp = followUpDAO.get(Integer.parseInt(id.trim()));
@@ -314,9 +329,50 @@ public class Controller {
     public String doSendEmail(String jsonString){
         String ids= mailService.sendFollowUps(jsonString);
         System.out.println("all messages sent");
-        //System.out.println("redirecting to initiatedFollowUp.do");
         return ids;
     }
 
+    public  String getUserInfo(List<Object> objects) {
+        String userInfo="";
+        try{
+            for (Object object : objects) {
+                Object []obj = (Object[])object;
+                for(Object values:obj){
+                    userInfo+= values + ",";
+                }
+                userInfo = userInfo.substring(0,userInfo.length() - 1);
+                userInfo += " ";
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        System.out.println(userInfo);
+        return userInfo;
+    }
+    public SearchInfo getSearchInfo(String[] splitLine) {
+        SearchInfo searchInfo = new SearchInfo();
+        searchInfo.setMake(splitLine[4]);
+        searchInfo.setModel(splitLine[5]);
+        searchInfo.setCost(Float.parseFloat(splitLine[6]));
+        searchInfo.setContent(splitLine[7]);
+        searchInfo.setWebsite(splitLine[8]);
+        return searchInfo;
+    }
 
+    public User getUser(String[] splitLine, Lead lead) {
+        User user = new User();
+        user.setName(splitLine[0]);
+        user.setContact_no(splitLine[1]);
+        user.setEmail(splitLine[2]);
+        user.setLeadId(lead);
+        return user;
+    }
+
+    public Lead getLead(String dateInString, SearchInfo searchInfo) {
+        Lead lead = new Lead();
+        lead.setDate(DateUtility.stringToDate(dateInString, "yyyy/MM/dd"));
+        lead.setPromising(false);
+        lead.setSearchInfoId(searchInfo);
+        return lead;
+    }
 }
