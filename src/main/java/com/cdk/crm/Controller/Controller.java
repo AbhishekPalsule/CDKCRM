@@ -35,6 +35,8 @@ import java.util.TimerTask;
 @org.springframework.stereotype.Controller
 public class Controller {
 
+    final static String ONGOING = "Ongoing";
+    final static String INITIATED = "Initiated";
     @Autowired
     private UserDAO userDAO ;
     @Autowired
@@ -130,7 +132,7 @@ public class Controller {
         final  long DELAY = 1000l;
         final  long INTERVAL= 1000l;
         String fileName = getFileName(request);
-        System.out.println("Fetching uploaded csv");
+        System.out.println("Fetching uploaded csv\n\n");
         String delimiter = ",";
         ArrayList<String> lines = CSVUtility.readLine(fileName);
 
@@ -143,9 +145,9 @@ public class Controller {
             User user = getUser(splitLine, lead);
             userDAO.add(user);
         }
-        System.out.println("Sending for conversion");
+        System.out.println("Sending for conversion\n\n");
         String jsonString = JSONUtil.getJSONConvertedData(responseDAO.getAllDetailsOfLeadsByDate());
-        System.out.println("initiate mailing");
+        System.out.println("initiate mailing\n\n");
         String ids = doSendEmail(jsonString);
         followUpUpdate(ids);
         TimerTask checkMailTask = new TimerTask() {
@@ -177,18 +179,17 @@ public class Controller {
                 String address = info[3];
 
                 if (status.trim().equalsIgnoreCase("Yes")) {
-                    System.out.println("STATUS:"+status);
+                    System.out.println("STATUS:"+status+"\n");
                     statuses += sendForPositiveResponse(leadId, count, address) + ",";
                 }
                 if (status.trim().equalsIgnoreCase("No")) {
-                    System.out.println("STATUS:"+status);
+                    System.out.println("STATUS:"+status+"\n");
                     statuses += sendForNegativeResponse(leadId, count, address) + ",";
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         return statuses;
     }
     public void cleanDatabase(int leadId){
@@ -210,7 +211,6 @@ public class Controller {
 
     private String sendForPositiveResponse(Long leadId, int count,String address) {
         if(count==1){
-
             if (sendReqAckMsg(address)) return "" + leadId;
         }
         return "";
@@ -229,10 +229,10 @@ public class Controller {
         }
     }
 
-    private void sendThankYou(){
+    private void sendThankYou() {
         List<Object> followUps = followUpDAO.getNegativeResponses();
         String userInfo = getUserInfo(followUps);
-        if(!userInfo.equals("")) {
+        if (!userInfo.equals("")) {
             String[] eligibleCustomers = userInfo.split(" ");
             for (String eachCustomer : eligibleCustomers) {
                 String[] customerInfo = eachCustomer.split(",");
@@ -245,7 +245,7 @@ public class Controller {
 
     private boolean sendOfferMsg(String address) {
         OfferFollowUp followUp = new OfferFollowUp();
-        System.out.println("send Offer Mail to "+ address);
+        System.out.println("send Offer Mail to "+ address+"\n\n");
         boolean b = mailService.sendMail(address, followUp.getSubject(), followUp.getMailMessage());
         return b;
 
@@ -254,7 +254,7 @@ public class Controller {
     private boolean sendReqAckMsg(String address) {
         boolean b =false;
         try {
-            System.out.println("send Request Ack Mail to "+ address);
+            System.out.println("send Request Ack Mail to "+ address+"\n\n");
             PositiveFollowUp followUp = new PositiveFollowUp();
             b = mailService.sendMail(address, followUp.getSubject(), followUp.getMailMessage("Pooja", "her", "1234567"));
         }catch(Exception e){
@@ -264,19 +264,19 @@ public class Controller {
     }
     public String fetchUpdatedFollowUp() {
         List<Object> followUps = followUpDAO.getAllLead();
-        System.out.println("Fetch from followUp_t");
+        System.out.println("Fetch from followUp_t\n\n");
         String userInfo="";
         userInfo += getUserInfo(followUps);
-        System.out.println("sending for reply");
+        System.out.println("sending for reply\n\n");
         return userInfo;
     }
 
     public List<String> readMail(){
         List<String> responses =null;
         try {
-            System.out.println("checking");
+            System.out.println("checking\n\n");
             responses = checkMailService.checkMail();
-            System.out.println("updatingMailResponses");
+            System.out.println("updatingMailResponses\n\n");
             checkMailService.closeResources();
         }catch (Exception e){
             e.printStackTrace();
@@ -284,17 +284,21 @@ public class Controller {
         return responses;
     }
     public void updateMailResponses(List<String> responses){
-        System.out.println("Updating Responses");
+        System.out.println("Updating Responses\n\n");
         for (String lead : responses) {
-                String leadInfo[] = lead.split(",");
-                FollowUp followUp = followUpDAO.get(Integer.parseInt(leadInfo[0]));
-                followUp.setCurrentResponse(leadInfo[1].trim());
-                followUpDAO.update(followUp);
-            }
-        System.out.println("Updated");
+                try {
+                    String leadInfo[] = lead.split(",");
+                    FollowUp followUp = followUpDAO.get(Integer.parseInt(leadInfo[0]));
+                    followUp.setCurrentResponse(leadInfo[1].trim());
+                    followUpDAO.update(followUp);
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+        }
+        System.out.println("Updated\n\n");
     }
     public void followUpUpdate(String ids){
-        System.out.println("initiating follow up");
+        System.out.println("initiating follow up\n\n");
         String idArray[] = ids.split(",");
         //System.out.println(ids);
         for (String id: idArray){
@@ -307,13 +311,13 @@ public class Controller {
             }
            }
         }
-        System.out.println("db updated");
+        System.out.println("db updated\n\n");
 
     }
 
     private void updateExistingFollowUp(FollowUp followUp) {
         followUp.setFollowUpCount(followUp.getFollowUpCount() + 1);
-        followUp.setCurrentFollowUpStatus("Ongoing");
+        followUp.setCurrentFollowUpStatus(ONGOING);
         followUpDAO.update(followUp);
     }
 
@@ -321,14 +325,13 @@ public class Controller {
         FollowUp followUp = new FollowUp();
         followUp.setLeadId(Integer.parseInt(id));
         followUp.setFollowUpCount(1);
-        System.out.println(followUp.getFollowUpCount());
-        followUp.setCurrentFollowUpStatus("Initiated");
+        followUp.setCurrentFollowUpStatus(INITIATED);
         followUpDAO.update(followUp);
     }
 
     public String doSendEmail(String jsonString){
         String ids= mailService.sendFollowUps(jsonString);
-        System.out.println("all messages sent");
+        System.out.println("all messages sent\n\n");
         return ids;
     }
 
@@ -346,7 +349,7 @@ public class Controller {
         }catch (Exception e){
             e.printStackTrace();
         }
-        System.out.println(userInfo);
+
         return userInfo;
     }
     public SearchInfo getSearchInfo(String[] splitLine) {
