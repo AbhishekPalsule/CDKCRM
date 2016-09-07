@@ -27,7 +27,6 @@ public class MailService {
             mailMessage.setTo(address);
             mailMessage.setSubject(subject);
             mailMessage.setText(message);
-            System.out.println(mailSender);
             mailSender.send(mailMessage);
         }catch (Exception e){
             e.printStackTrace();
@@ -38,10 +37,8 @@ public class MailService {
 
     public  String sendFollowUps(String jsonLeads){
        String ids="";
-
         try {
             JSONArray jsonArray = getJSONArray(jsonLeads);
-
             for(int i =0 ; i < jsonArray.size() ; i ++){
                 JSONObject data = getJsonObject(jsonArray, i);
                 InitialFollowUp ifu = new InitialFollowUp();
